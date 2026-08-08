@@ -8,11 +8,13 @@ import org.http4s.implicits.*
 
 class HttpApiSpec extends CatsEffectSuite:
 
-  private val app: HttpApp[IO] = HttpApi.routes[IO].orNotFound
+  private val appResource: IO[HttpApp[IO]] =
+    InMemoryEventRepository.empty[IO].map(repo => HttpApi.routes[IO](repo).orNotFound)
 
   test("GET /health returns 200 with status UP") {
     val request = Request[IO](Method.GET, uri"/health")
     for
+      app      <- appResource
       response <- app.run(request)
       body     <- response.as[String]
     yield
@@ -20,8 +22,10 @@ class HttpApiSpec extends CatsEffectSuite:
       assertEquals(decode[HealthStatus](body), Right(HealthStatus("UP")))
   }
 
-  test("GET /docs returns 200 (swagger UI is mounted)") {
+  test("GET /docs redirects to the swagger UI") {
     val request = Request[IO](Method.GET, uri"/docs")
-    for response <- app.run(request)
+    for
+      app      <- appResource
+      response <- app.run(request)
     yield assertEquals(response.status, Status.PermanentRedirect)
   }
