@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: event-metrics-postgres
+    environment:
+      POSTGRES_DB: event_metrics
+      POSTGRES_USER: event_metrics
+      POSTGRES_PASSWORD: event_metrics
+    ports:
+      - "5432:5432"
+    volumes:
+      - event_metrics_pgdata:/var/lib/postgresql/data
+
+volumes:
+  event_metrics_pgdata:
