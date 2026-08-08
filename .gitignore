@@ -1,0 +1,26 @@
+# sbt / build
+target/
+project/target/
+project/project/
+.bsp/
+
+# Metals / IDE
+.metals/
+.bloop/
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Env locales
+.env
+
+# Documentación auxiliar — solo README.md se versiona
+*.md
+!README.md
+!**/README.md
