@@ -4,6 +4,7 @@ import io.circe.{Codec, Decoder, Encoder}
 import io.circe.generic.semiauto.deriveCodec
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
+import sttp.tapir.generic.auto.*
 import sttp.model.StatusCode
 import java.time.Instant
 import java.util.UUID
@@ -30,7 +31,11 @@ object EventJson:
   given Schema[LogLevel] = Schema.derivedEnumeration.defaultStringBased
 
   given Codec[Event] = deriveCodec
-  given Schema[Event] = Schema.derived
+  // `Event` is encoded by circe's default coproduct codec as a single-field wrapper object,
+  // e.g. {"ServerMetric": {"id": ..., "timestamp": ..., ...}}. `Schema.oneOfWrapped` documents
+  // that same wrapped shape (rather than a flat, un-wrapped oneOf), so the generated OpenAPI
+  // schema matches what circe actually puts on the wire.
+  given Schema[Event] = Schema.oneOfWrapped[Event]
 
 enum CreateEventRequest:
   case ServerMetric(source: String, cpuUsagePct: Double, memoryUsageMb: Long)
@@ -40,13 +45,14 @@ enum CreateEventRequest:
 object CreateEventRequest:
   import EventJson.given
   given Codec[CreateEventRequest] = deriveCodec
-  given Schema[CreateEventRequest] = Schema.derived
+  // Same rationale as `Schema[Event]` above: match circe's wrapped coproduct wire format.
+  given Schema[CreateEventRequest] = Schema.oneOfWrapped[CreateEventRequest]
 
   def toDomain(request: CreateEventRequest, id: EventId, timestamp: Instant): Event =
     request match
-      case ServerMetric(source, cpu, mem)        => Event.ServerMetric(id, timestamp, source, cpu, mem)
-      case LogEntry(source, level, message)      => Event.LogEntry(id, timestamp, source, level, message)
-      case CustomMetric(source, name, value, ts) => Event.CustomMetric(id, timestamp, source, name, value, ts)
+      case ServerMetric(source, cpu, mem)          => Event.ServerMetric(id, timestamp, source, cpu, mem)
+      case LogEntry(source, level, message)        => Event.LogEntry(id, timestamp, source, level, message)
+      case CustomMetric(source, name, value, tags) => Event.CustomMetric(id, timestamp, source, name, value, tags)
 
 object EventsEndpoint:
   import EventJson.given
