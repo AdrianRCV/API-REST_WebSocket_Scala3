@@ -11,6 +11,8 @@ val circeVersion       = "0.14.15"
 val log4catsVersion    = "2.8.0"
 val logbackVersion     = "1.5.13"
 val munitCEVersion     = "2.2.0"
+val flywayVersion      = "11.20.3"
+val testcontainersVersion = "0.39.12"
 
 lazy val root = (project in file("."))
   .settings(
@@ -39,6 +41,10 @@ lazy val root = (project in file("."))
       "org.typelevel" %% "doobie-core"     % doobieVersion,
       "org.typelevel" %% "doobie-postgres" % doobieVersion,
       "org.typelevel" %% "doobie-hikari"   % doobieVersion,
+      "org.typelevel" %% "doobie-postgres-circe" % doobieVersion,
+
+      "org.flywaydb" % "flyway-core"                     % flywayVersion,
+      "org.flywaydb" % "flyway-database-postgresql"       % flywayVersion,
 
       "io.circe" %% "circe-core"    % circeVersion,
       "io.circe" %% "circe-generic" % circeVersion,
@@ -46,7 +52,8 @@ lazy val root = (project in file("."))
       "org.typelevel"  %% "log4cats-slf4j"  % log4catsVersion,
       "ch.qos.logback"  % "logback-classic" % logbackVersion,
 
-      "org.typelevel" %% "munit-cats-effect" % munitCEVersion % Test
+      "org.typelevel" %% "munit-cats-effect" % munitCEVersion % Test,
+      "com.dimafeng" %% "testcontainers-scala-postgresql" % testcontainersVersion % Test
     ),
     testFrameworks += new TestFramework("munit.Framework")
   )
