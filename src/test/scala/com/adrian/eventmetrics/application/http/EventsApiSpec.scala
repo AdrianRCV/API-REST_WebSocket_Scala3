@@ -9,6 +9,8 @@ import munit.CatsEffectSuite
 import org.http4s.*
 import org.http4s.circe.*
 import org.http4s.implicits.*
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.util.UUID
 import com.adrian.eventmetrics.domain.model.{Event, LogLevel}
 import com.adrian.eventmetrics.infrastructure.db.{DatabaseConfig, Migrations}
@@ -16,6 +18,8 @@ import com.adrian.eventmetrics.infrastructure.persistence.DoobieEventRepository
 import EventJson.given
 
 class EventsApiSpec extends CatsEffectSuite:
+
+  private given Logger[IO] = Slf4jLogger.getLogger[IO]
 
   test("POST /events then GET /events and GET /events/{id} round-trip against a real database") {
     val container = PostgreSQLContainer()
@@ -29,27 +33,49 @@ class EventsApiSpec extends CatsEffectSuite:
         password = config.password,
         logHandler = None
       )
-      val requestJson =
-        (CreateEventRequest.LogEntry("integration-test", LogLevel.Warn, "disk usage high"): CreateEventRequest).asJson
+
+      val logEntryRequest: CreateEventRequest =
+        CreateEventRequest.LogEntry("integration-test", LogLevel.Warn, "disk usage high")
+      // memoryUsageMb above 2^53 (9007199254740992): if the wire codec ever round-trips
+      // through a Double, this value loses precision. Proves the Long survives intact.
+      val serverMetricRequest: CreateEventRequest =
+        CreateEventRequest.ServerMetric("integration-test", 87.5, 9007199254740993L)
+      val customMetricRequest: CreateEventRequest =
+        CreateEventRequest.CustomMetric(
+          "integration-test",
+          "queue_depth",
+          7.0,
+          Map("region" -> "eu-west-1", "team" -> "platform")
+        )
+
+      def postAndGet(app: org.http4s.HttpApp[IO], request: CreateEventRequest): IO[Event] =
+        for
+          postResp <- app.run(Request[IO](Method.POST, uri"/events").withEntity(request.asJson))
+          postBody <- postResp.as[String]
+          _         = assertEquals(postResp.status, Status.Created)
+          created   = decode[Event](postBody).getOrElse(fail(s"could not decode created event: $postBody"))
+          createdId = idOf(created)
+          getResp  <- app.run(Request[IO](Method.GET, Uri.unsafeFromString(s"/events/$createdId")))
+          getBody  <- getResp.as[String]
+          _         = assertEquals(getResp.status, Status.Ok)
+          _         = assertEquals(decode[Event](getBody), Right(created))
+        yield created
 
       for
-        _        <- Migrations.migrate[IO](config)
-        repo      = new DoobieEventRepository[IO](xa)
-        app       = HttpApi.routes[IO](repo).orNotFound
-        postResp <- app.run(Request[IO](Method.POST, uri"/events").withEntity(requestJson))
-        postBody <- postResp.as[String]
-        created   = decode[Event](postBody).getOrElse(fail(s"could not decode created event: $postBody"))
-        createdId = idOf(created)
-        getResp  <- app.run(Request[IO](Method.GET, Uri.unsafeFromString(s"/events/$createdId")))
-        getBody  <- getResp.as[String]
-        listResp <- app.run(Request[IO](Method.GET, uri"/events"))
-        listBody <- listResp.as[String]
-        missing  <- app.run(Request[IO](Method.GET, Uri.unsafeFromString(s"/events/${UUID.randomUUID()}")))
+        _              <- Migrations.migrate[IO](config)
+        repo            = new DoobieEventRepository[IO](xa)
+        app             = HttpApi.routes[IO](repo).orNotFound
+        createdLogEntry     <- postAndGet(app, logEntryRequest)
+        createdServerMetric <- postAndGet(app, serverMetricRequest)
+        createdCustomMetric <- postAndGet(app, customMetricRequest)
+        listResp       <- app.run(Request[IO](Method.GET, uri"/events"))
+        listBody       <- listResp.as[String]
+        missing        <- app.run(Request[IO](Method.GET, Uri.unsafeFromString(s"/events/${UUID.randomUUID()}")))
       yield
-        assertEquals(postResp.status, Status.Created)
-        assertEquals(getResp.status, Status.Ok)
-        assertEquals(decode[Event](getBody), Right(created))
-        assertEquals(decode[List[Event]](listBody), Right(List(created)))
+        assertEquals(
+          decode[List[Event]](listBody).map(_.toSet),
+          Right(Set(createdLogEntry, createdServerMetric, createdCustomMetric))
+        )
         assertEquals(missing.status, Status.NotFound)
     finally container.stop()
   }
