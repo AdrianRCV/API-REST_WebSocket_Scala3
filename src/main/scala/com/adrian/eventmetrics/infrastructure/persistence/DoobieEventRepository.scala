@@ -38,15 +38,16 @@ class DoobieEventRepository[F[_]: Async](xa: Transactor[F]) extends EventReposit
     sql"""
       SELECT id, event_type, occurred_at, source, payload
       FROM events
-      ORDER BY occurred_at
+      ORDER BY occurred_at, id
     """.query[Row].to[List].transact(xa).flatMap { rows =>
       rows.traverse(row => Async[F].fromEither(fromRow(row)))
     }
 
 object DoobieEventRepository:
 
-  private given Meta[EventId] = Meta[UUID].timap(EventId.apply)(_.value)
-
+  // Storage-side codecs below are deliberately independent of `EventsEndpoint.scala`'s
+  // `EventJson` wire-format codecs — do not deduplicate them, or the on-disk format and the
+  // public API contract would become coupled and unable to evolve separately.
   private given Encoder[LogLevel] = Encoder.encodeString.contramap(_.toString)
   private given Decoder[LogLevel] = Decoder.decodeString.emap { s =>
     LogLevel.values.find(_.toString == s).toRight(s"Unknown LogLevel: $s")

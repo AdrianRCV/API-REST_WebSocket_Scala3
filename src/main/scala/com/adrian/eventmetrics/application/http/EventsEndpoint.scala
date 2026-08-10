@@ -11,8 +11,9 @@ import java.util.UUID
 import com.adrian.eventmetrics.domain.model.{Event, EventId, LogLevel}
 
 /** JSON (de)serialization for the public HTTP API — separate from the circe codecs
-  * `DoobieEventRepository` uses for the JSONB storage payload. The API wire format and
-  * the storage format are deliberately allowed to evolve independently (see design doc).
+  * `DoobieEventRepository` uses for the JSONB storage payload. This duplication is deliberate:
+  * keeping the wire-format codecs independent from the storage codecs lets the public API
+  * contract and the DB schema evolve independently of each other.
   */
 object EventJson:
   given Encoder[EventId] = Encoder.encodeUUID.contramap(_.value)
