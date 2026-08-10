@@ -6,11 +6,15 @@ import org.typelevel.doobie.hikari.HikariTransactor
 import org.typelevel.doobie.util.ExecutionContexts
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import com.adrian.eventmetrics.application.http.HttpApi
 import com.adrian.eventmetrics.infrastructure.db.{DatabaseConfig, Migrations}
 import com.adrian.eventmetrics.infrastructure.persistence.DoobieEventRepository
 
 object Main extends IOApp:
+
+  private given Logger[IO] = Slf4jLogger.getLogger[IO]
 
   private def transactor(config: DatabaseConfig): Resource[IO, HikariTransactor[IO]] =
     for

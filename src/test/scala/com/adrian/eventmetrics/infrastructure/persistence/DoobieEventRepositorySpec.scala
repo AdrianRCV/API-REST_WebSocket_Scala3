@@ -4,11 +4,15 @@ import cats.effect.IO
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import org.typelevel.doobie.Transactor
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.time.Instant
 import com.adrian.eventmetrics.domain.model.{Event, EventId, LogLevel}
 import com.adrian.eventmetrics.infrastructure.db.{DatabaseConfig, Migrations}
 
 class DoobieEventRepositorySpec extends CatsEffectSuite:
+
+  private given Logger[IO] = Slf4jLogger.getLogger[IO]
 
   test("insert then findById and list round-trip all Event variants") {
     val container = PostgreSQLContainer()

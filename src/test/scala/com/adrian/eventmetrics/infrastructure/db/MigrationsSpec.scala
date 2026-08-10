@@ -3,8 +3,12 @@ package com.adrian.eventmetrics.infrastructure.db
 import cats.effect.IO
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import munit.CatsEffectSuite
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 class MigrationsSpec extends CatsEffectSuite:
+
+  private given Logger[IO] = Slf4jLogger.getLogger[IO]
 
   test("migrate creates the events table") {
     val container = PostgreSQLContainer()
