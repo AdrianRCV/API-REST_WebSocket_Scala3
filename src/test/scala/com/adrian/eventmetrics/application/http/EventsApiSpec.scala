@@ -12,6 +12,7 @@ import org.http4s.implicits.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.util.UUID
+import com.adrian.eventmetrics.application.realtime.EventBroadcaster
 import com.adrian.eventmetrics.domain.model.{Event, LogLevel}
 import com.adrian.eventmetrics.infrastructure.db.{DatabaseConfig, Migrations}
 import com.adrian.eventmetrics.infrastructure.persistence.DoobieEventRepository
@@ -64,7 +65,8 @@ class EventsApiSpec extends CatsEffectSuite:
       for
         _              <- Migrations.migrate[IO](config)
         repo            = new DoobieEventRepository[IO](xa)
-        app             = HttpApi.routes[IO](repo).orNotFound
+        broadcaster    <- EventBroadcaster[IO]
+        app             = HttpApi.routes[IO](repo, broadcaster).orNotFound
         createdLogEntry     <- postAndGet(app, logEntryRequest)
         createdServerMetric <- postAndGet(app, serverMetricRequest)
         createdCustomMetric <- postAndGet(app, customMetricRequest)

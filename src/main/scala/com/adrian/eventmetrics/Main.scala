@@ -9,6 +9,7 @@ import org.http4s.implicits.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import com.adrian.eventmetrics.application.http.HttpApi
+import com.adrian.eventmetrics.application.realtime.EventBroadcaster
 import com.adrian.eventmetrics.infrastructure.db.{DatabaseConfig, Migrations}
 import com.adrian.eventmetrics.infrastructure.persistence.DoobieEventRepository
 
@@ -32,9 +33,10 @@ object Main extends IOApp:
     for
       config <- DatabaseConfig.fromEnv[IO]
       _      <- Migrations.migrate[IO](config)
+      broadcaster <- EventBroadcaster[IO]
       exit   <- transactor(config).use { xa =>
                   val repo = new DoobieEventRepository[IO](xa)
-                  val app  = HttpApi.routes[IO](repo).orNotFound
+                  val app  = HttpApi.routes[IO](repo, broadcaster).orNotFound
 
                   EmberServerBuilder
                     .default[IO]
