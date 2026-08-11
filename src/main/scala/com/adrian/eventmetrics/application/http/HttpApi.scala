@@ -3,8 +3,10 @@ package com.adrian.eventmetrics.application.http
 import cats.effect.{Async, Clock}
 import cats.syntax.all.*
 import io.circe.syntax.*
-import org.http4s.HttpRoutes
+import org.http4s.{HttpApp, HttpRoutes}
+import org.http4s.implicits.*
 import org.http4s.server.websocket.WebSocketBuilder2
+import sttp.capabilities.WebSockets
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.tapir.server.ServerEndpoint
 import sttp.tapir.server.http4s.Http4sServerInterpreter
@@ -58,12 +60,32 @@ object HttpApi:
     Http4sServerInterpreter[F]().toRoutes(apiEndpoints ++ docsEndpoints)
 
   def wsRoutes[F[_]: Async](broadcaster: EventBroadcaster[F])(wsb: WebSocketBuilder2[F]): HttpRoutes[F] =
-    val streamServerEndpoint: ServerEndpoint[Fs2Streams[F] & sttp.capabilities.WebSockets, F] =
+    val streamServerEndpoint: ServerEndpoint[Fs2Streams[F] & WebSockets, F] =
       EventsWsEndpoint.stream[F].serverLogicSuccess { _ =>
         val pipe: fs2.Pipe[F, WebSocketFrame, WebSocketFrame] =
-          (_: fs2.Stream[F, WebSocketFrame]) =>
-            broadcaster.subscribe.map(event => WebSocketFrame.text(event.asJson.noSpaces))
+          (incoming: fs2.Stream[F, WebSocketFrame]) =>
+            // The incoming stream must be actively drained even though we never act on client
+            // frames: tapir wires this pipe directly with no background draining fiber (autoPing
+            // is disabled for the raw WS body), so without pulling on `incoming` the client's Ping
+            // and Close frames are never read, breaking keep-alive and clean shutdown.
+            incoming.drain.mergeHaltBoth(
+              broadcaster.subscribe.map(event => WebSocketFrame.text(event.asJson.noSpaces))
+            )
         Async[F].pure(pipe)
       }
 
     Http4sServerInterpreter[F]().toWebSocketRoutes(streamServerEndpoint)(wsb)
+
+  /** Combines `wsRoutes` and `routes` into the final app, with `wsRoutes` tried first: its path
+    * is the fixed literal segment "events" / "stream", but `routes` also exposes
+    * `GET /events/{id}` with a UUID path capture. If `routes` were tried first, that capture
+    * would match "stream" as the `id` segment, fail to decode it as a UUID, and tapir's default
+    * decode-failure handler would return a 400 directly instead of falling through — so
+    * `wsRoutes` would never be reached. Trying `wsRoutes` first avoids that conflict; it only
+    * matches the exact `/events/stream` path with a WS upgrade.
+    */
+  def app[F[_]: Async](
+      eventRepository: EventRepository[F],
+      broadcaster: EventBroadcaster[F]
+  )(wsb: WebSocketBuilder2[F]): HttpApp[F] =
+    (wsRoutes[F](broadcaster)(wsb) <+> routes[F](eventRepository, broadcaster)).orNotFound

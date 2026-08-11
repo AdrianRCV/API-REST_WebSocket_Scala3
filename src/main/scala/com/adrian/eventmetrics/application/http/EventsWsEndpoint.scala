@@ -7,7 +7,12 @@ import sttp.ws.WebSocketFrame
 
 object EventsWsEndpoint:
 
-  def stream[F[_]]: PublicEndpoint[Unit, Unit, fs2.Pipe[F, WebSocketFrame, WebSocketFrame], Fs2Streams[F] & WebSockets] =
+  def stream[F[_]]: PublicEndpoint[
+    Unit,
+    Unit,
+    fs2.Pipe[F, WebSocketFrame, WebSocketFrame],
+    Fs2Streams[F] & WebSockets
+  ] =
     endpoint.get
       .in("events" / "stream")
       .out(webSocketBodyRaw(Fs2Streams[F]))
