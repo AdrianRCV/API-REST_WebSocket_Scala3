@@ -1,6 +1,6 @@
 # Sistema de Procesamiento de Eventos y Métricas en Tiempo Real
 
-Backend en Scala 3 (sbt) para procesamiento de eventos y métricas en tiempo real, expuesto vía API HTTP y (próximamente) WebSockets.
+Backend en Scala 3 (sbt) para procesamiento de eventos y métricas en tiempo real, expuesto vía API HTTP y WebSockets.
 
 ## Stack
 
@@ -41,6 +41,11 @@ configura vía variables de entorno, con valores por defecto que coinciden con
 - `POST /events` — crea un evento (`ServerMetric`, `LogEntry` o `CustomMetric`) y devuelve el evento creado (`201 Created`).
 - `GET /events` — lista todos los eventos almacenados.
 - `GET /events/{id}` — obtiene un evento por id (`404 Not Found` si no existe).
+- `GET /events/stream` — upgrade a WebSocket; retransmite en tiempo real los eventos recién creados como frames de texto JSON (solo servidor→cliente, sin backfill de eventos anteriores).
+
+## Limitaciones conocidas
+
+- La suscripción de un cliente WebSocket usa una cola acotada (`Topic.subscribe`, `maxQueued = 16`). Si un cliente WS se queda colgado o es lento leyendo, su cola puede llenarse y eso puede terminar bloqueando `POST /events`, ya que la publicación al broadcaster ocurre dentro del propio handler HTTP tras el insert en base de datos. Es una limitación aceptada para esta iteración (instancia única).
 
 ## Tests
 

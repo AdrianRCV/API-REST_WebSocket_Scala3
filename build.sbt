@@ -13,6 +13,7 @@ val logbackVersion     = "1.5.13"
 val munitCEVersion     = "2.2.0"
 val flywayVersion      = "11.20.3"
 val testcontainersVersion = "0.39.12"
+val sttpSharedVersion  = "1.5.2"
 
 lazy val root = (project in file("."))
   .settings(
@@ -37,6 +38,8 @@ lazy val root = (project in file("."))
       "com.softwaremill.sttp.tapir" %% "tapir-http4s-server"     % tapirVersion,
       "com.softwaremill.sttp.tapir" %% "tapir-json-circe"        % tapirVersion,
       "com.softwaremill.sttp.tapir" %% "tapir-swagger-ui-bundle" % tapirVersion,
+      "com.softwaremill.sttp.shared" %% "fs2" % sttpSharedVersion,
+      "com.softwaremill.sttp.shared" %% "ws"  % sttpSharedVersion,
 
       "org.typelevel" %% "doobie-core"     % doobieVersion,
       "org.typelevel" %% "doobie-postgres" % doobieVersion,
