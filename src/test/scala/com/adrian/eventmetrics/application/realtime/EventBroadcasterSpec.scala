@@ -2,7 +2,6 @@ package com.adrian.eventmetrics.application.realtime
 
 import cats.effect.IO
 import munit.CatsEffectSuite
-import scala.concurrent.duration.*
 import java.time.Instant
 import com.adrian.eventmetrics.domain.model.{Event, EventId, LogLevel}
 
@@ -13,10 +12,13 @@ class EventBroadcasterSpec extends CatsEffectSuite:
 
     for
       broadcaster <- EventBroadcaster[IO]
-      fiber       <- broadcaster.subscribe.take(1).compile.lastOrError.start
-      _           <- IO.sleep(200.millis) // deja que la suscripción se registre antes de publicar
-      _           <- broadcaster.publish(event)
-      got         <- fiber.joinWithNever
+      got         <- broadcaster.subscribeAwait.use { subscribed =>
+                       for
+                         fiber <- subscribed.take(1).compile.lastOrError.start
+                         _     <- broadcaster.publish(event)
+                         got   <- fiber.joinWithNever
+                       yield got
+                     }
     yield assertEquals(got, event)
   }
 
@@ -26,10 +28,13 @@ class EventBroadcasterSpec extends CatsEffectSuite:
 
     for
       broadcaster <- EventBroadcaster[IO]
-      fiber       <- broadcaster.subscribe.take(2).compile.toList.start
-      _           <- IO.sleep(200.millis)
-      _           <- broadcaster.publish(e1)
-      _           <- broadcaster.publish(e2)
-      got         <- fiber.joinWithNever
+      got         <- broadcaster.subscribeAwait.use { subscribed =>
+                       for
+                         fiber <- subscribed.take(2).compile.toList.start
+                         _     <- broadcaster.publish(e1)
+                         _     <- broadcaster.publish(e2)
+                         got   <- fiber.joinWithNever
+                       yield got
+                     }
     yield assertEquals(got, List(e1, e2))
   }
