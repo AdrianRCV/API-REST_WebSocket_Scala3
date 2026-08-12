@@ -1,5 +1,7 @@
 # Sistema de Procesamiento de Eventos y Métricas en Tiempo Real
 
+[![CI](https://github.com/AdrianRCV/API-REST_WebSocket_Scala3/actions/workflows/ci.yml/badge.svg)](https://github.com/AdrianRCV/API-REST_WebSocket_Scala3/actions/workflows/ci.yml)
+
 Backend en Scala 3 (sbt) para procesamiento de eventos y métricas en tiempo real, expuesto vía API HTTP y WebSockets.
 
 ## Stack
