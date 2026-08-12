@@ -48,6 +48,7 @@ configura vía variables de entorno, con valores por defecto que coinciden con
 ## Limitaciones conocidas
 
 - La suscripción de un cliente WebSocket usa una cola acotada (`Topic.subscribe`, `maxQueued = 16`). Si un cliente WS se queda colgado o es lento leyendo, su cola puede llenarse y eso puede terminar bloqueando `POST /events`, ya que la publicación al broadcaster ocurre dentro del propio handler HTTP tras el insert en base de datos. Es una limitación aceptada para esta iteración (instancia única).
+- **3 tests fallan en CI (GitHub Actions) por una causa aún no resuelta**: `MigrationsSpec`, `DoobieEventRepositorySpec` y `EventsApiSpec` (todos basados en `testcontainers-scala-postgresql`) fallan de forma consistente con `Connection refused` durante toda la ventana de timeout (verificado con logs reales, no es un problema de que el timeout sea demasiado corto — ya se probó subiéndolo a 2 minutos sin efecto). El contenedor de Postgres que levanta testcontainers nunca llega a aceptar conexiones en ese runner. Es el mismo síntoma estructural observado en el entorno de desarrollo local, ahora confirmado también en un runner de GitHub limpio — así que no es (solo) una peculiaridad del sandbox de desarrollo. Causa raíz pendiente de investigar (candidatos: la imagen de Postgres por defecto de `testcontainers-scala-postgresql`, la wait strategy del contenedor, o algo específico de red en el runner). Queda como pendiente para una iteración dedicada.
 
 ## Tests
 
