@@ -9,8 +9,15 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import java.time.Instant
 import com.adrian.eventmetrics.domain.model.{Event, EventId, LogLevel}
 import com.adrian.eventmetrics.infrastructure.db.{DatabaseConfig, Migrations}
+import scala.concurrent.duration.*
 
 class DoobieEventRepositorySpec extends CatsEffectSuite:
+
+  // CI runners can take well over munit-cats-effect's default 30s munitIOTimeout for the
+  // Postgres testcontainer to actually accept connections (container "started" fires before
+  // Postgres finishes its real startup). Override the timeout that actually governs IO
+  // cancellation per the deprecation note on munitTimeout in CatsEffectSuite.
+  override def munitIOTimeout: Duration = 2.minutes
 
   private given Logger[IO] = Slf4jLogger.getLogger[IO]
 

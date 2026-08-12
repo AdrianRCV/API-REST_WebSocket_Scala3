@@ -5,8 +5,15 @@ import com.dimafeng.testcontainers.PostgreSQLContainer
 import munit.CatsEffectSuite
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import scala.concurrent.duration.*
 
 class MigrationsSpec extends CatsEffectSuite:
+
+  // CI runners can take well over munit-cats-effect's default 30s munitIOTimeout for the
+  // Postgres testcontainer to actually accept connections (container "started" fires before
+  // Postgres finishes its real startup). Override the timeout that actually governs IO
+  // cancellation per the deprecation note on munitTimeout in CatsEffectSuite.
+  override def munitIOTimeout: Duration = 2.minutes
 
   private given Logger[IO] = Slf4jLogger.getLogger[IO]
 
