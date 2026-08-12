@@ -25,7 +25,7 @@ jobs:
 
       - name: Run tests
         id: test
-        run: sbt test 2>&1 | tee /tmp/test-output.log
+        run: sbt "set Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)" test > /tmp/test-output.log 2>&1
         continue-on-error: true
 
       - name: DIAGNOSTIC - push test output to debug branch
@@ -33,12 +33,12 @@ jobs:
         run: |
           git config user.email "ci-diagnostic@local"
           git config user.name "CI Diagnostic"
-          git checkout --orphan ci-diagnostic-output
+          git checkout --orphan ci-diagnostic-output-2
           git rm -rf . > /dev/null 2>&1 || true
           cp /tmp/test-output.log ./test-output.log
           git add test-output.log
-          git commit -m "diagnostic: capture sbt test output for run ${{ github.run_id }}"
-          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ci-diagnostic-output -f
+          git commit -m "diagnostic round 2: capture sbt test output for run ${{ github.run_id }}"
+          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ci-diagnostic-output-2 -f
 
       - name: Fail job if tests failed
         if: steps.test.outcome == 'failure'
