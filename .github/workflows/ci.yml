@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -24,22 +21,4 @@ jobs:
       - uses: sbt/setup-sbt@v1
 
       - name: Run tests
-        id: test
-        run: sbt test > /tmp/test-output.log 2>&1
-        continue-on-error: true
-
-      - name: DIAGNOSTIC - push test output to debug branch
-        if: always()
-        run: |
-          git config user.email "ci-diagnostic@local"
-          git config user.name "CI Diagnostic"
-          git checkout --orphan ci-diagnostic-output-3
-          git rm -rf . > /dev/null 2>&1 || true
-          cp /tmp/test-output.log ./test-output.log
-          git add test-output.log
-          git commit -m "diagnostic round 3: capture sbt test output for run ${{ github.run_id }}"
-          git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ci-diagnostic-output-3 -f
-
-      - name: Fail job if tests failed
-        if: steps.test.outcome == 'failure'
-        run: exit 1
+        run: sbt test
