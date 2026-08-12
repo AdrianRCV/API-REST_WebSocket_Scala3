@@ -13,10 +13,11 @@ import scala.concurrent.duration.*
 
 class DoobieEventRepositorySpec extends CatsEffectSuite:
 
-  // CI runners can take well over munit-cats-effect's default 30s munitIOTimeout for the
-  // Postgres testcontainer to actually accept connections (container "started" fires before
-  // Postgres finishes its real startup). Override the timeout that actually governs IO
-  // cancellation per the deprecation note on munitTimeout in CatsEffectSuite.
+  // Note: this does NOT protect the blocking `container.start()` call below — that call runs
+  // synchronously, before this IO is even constructed, so munitIOTimeout can never interrupt it.
+  // Testcontainers' own startup/connect timeouts (120s by default) govern that phase instead —
+  // see README "Limitaciones conocidas" for the CI failure this relates to. This override only
+  // extends the window for the IO-effectful work that runs once the container is actually up.
   override def munitIOTimeout: Duration = 2.minutes
 
   private given Logger[IO] = Slf4jLogger.getLogger[IO]
